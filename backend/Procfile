@@ -1,0 +1,3 @@
+redis: valkey-server
+worker: celery -A src.tasks worker --loglevel=info
+web: python run.py
