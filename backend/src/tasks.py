@@ -1,33 +1,36 @@
 from src import celery
+import logging
 import docker
 import tempfile
 import os
 import traceback
 import shutil
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 LANGUAGE_CONFIGS = {
     "python": {
-        "image": "python:3.11-slim",
+        "image": "python:3.13-alpine",
         "file_ext": ".py",
         "command": lambda filename: ["python3", filename],
     },
     "c": {
-        "image": "gcc:latest",
+        "image": "gcc:latest-alpine",
         "file_ext": ".c",
         "command": lambda filename: ["sh", "-c", f"gcc {filename} -o out && ./out"],
     },
     "cpp": {
-        "image": "gcc:latest",
+        "image": "gcc:latest-alpine",
         "file_ext": ".cpp",
         "command": lambda filename: ["sh", "-c", f"g++ {filename} -o out && ./out"],
     },
     "node": {
-        "image": "node:20-slim",
+        "image": "node:20-alpine",
         "file_ext": ".js",
         "command": lambda filename: ["node", filename],
     },
     "java": {
-        "image": "openjdk:21-slim",
+        "image": "openjdk:21-alpine",
         "file_ext": ".java",
         "command": lambda filename: ["sh", "-c", f"javac {filename} && java -cp . Main"],
     },
@@ -63,6 +66,13 @@ def run_code(self, code, language):
             stderr=True,
             cpu_period=100000,
             cpu_quota=50000,
+            log_config=docker.types.LogConfig(
+                type="json-file",  # Log driver
+                config={
+                    "max-size": "10m",  # Limit log file size to 10 MB
+                    "max-file": "3",    # Keep only 3 log files
+                }
+            ),
         )
 
         return {"output": result.decode("utf-8"), "error": None}
@@ -86,5 +96,6 @@ def run_code(self, code, language):
         # STEP 3: Clean up temp dir
         try:
             shutil.rmtree(temp_dir)
+            logging.info(f"cleaned temp dir: {temp_dir}")
         except Exception as cleanup_error:
-            print(f"[!] Cleanup failed: {cleanup_error}")
+            logging.info(f"[!] Cleanup failed: {cleanup_error}")

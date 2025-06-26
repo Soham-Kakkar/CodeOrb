@@ -6,7 +6,7 @@ def make_app():
     app = Flask(__name__)
     app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
     app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
-    CORS(app, origins=["http://localhost:5500"], supports_credentials=True)
+    CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
     return app
 
 def make_celery(app):
