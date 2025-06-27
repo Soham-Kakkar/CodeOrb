@@ -25,7 +25,6 @@ Note: True asynchronous execution is not yet implemented, although Celery is set
 
 - Implement fully asynchronous execution (currently synchronous with Celery setup)
 - Add user authentication
-- Build a proper frontend interface
 
 ## Installation and Usage
 
