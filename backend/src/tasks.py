@@ -30,7 +30,7 @@ LANGUAGE_CONFIGS = {
         "command": lambda filename: ["node", filename],
     },
     "java": {
-        "image": "openjdk:21-alpine",
+        "image": "eclipse-temurin:21-jdk-alpine",
         "file_ext": ".java",
         "command": lambda filename: ["sh", "-c", f"javac {filename} && java -cp . Main"],
     },

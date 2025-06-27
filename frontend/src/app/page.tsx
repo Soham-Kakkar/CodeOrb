@@ -1,83 +1,63 @@
-'use client'
+const HeroSection: React.FC = () => (
+  <section className="text-center py-20 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+    <h1 className="text-5xl font-bold mb-4">Welcome to CodeOrb</h1>
+    <p className="text-xl max-w-2xl mx-auto mb-8">
+      Run code in multiple languages right from your browser. Fast, secure, and simple.
+    </p>
+    <a
+      href="#features"
+      className="inline-block bg-white text-blue-700 font-semibold px-8 py-3 rounded shadow hover:bg-gray-100 transition"
+    >
+      Explore Features
+    </a>
+  </section>
+);
 
-import { useState } from 'react';
+const FeatureCard: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="bg-white rounded shadow p-6 text-center hover:scale-[1.02] transition-[0.5s]">
+    <h3 className="text-2xl font-semibold mb-2">{title}</h3>
+    <p className="text-gray-700">{description}</p>
+  </div>
+);
 
-const Home = () => {
-  const [language, setLanguage] = useState('python');
-  const [code, setCode] = useState('print("Hello, world!")');
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const runCode = async () => {
-    setIsLoading(true);
-    setOutput('');
-    setError('');
-
-    try {
-      const response = await fetch('/api/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language, code }),
-      });
-
-      const data = await response.json();
-      if (data.error) {
-        setError(data.error);
-        setOutput('');
-      } else {
-        setOutput(data.output);
-      }
-    } catch (err: any) {
-      setError(`⚠️ Request failed: ${err.message}`);
-      setOutput('');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center mx-auto p-8 bg-gradient-to-b from-blue-900 to-indigo-800 min-h-screen space-y-8">
-      <h1 className="text-5xl font-bold text-white mb-6 drop-shadow-lg">CodeOrb: Run Your Code</h1>
-
-      <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-        <div className="flex flex-col md:flex-row items-center space-x-0 md:space-x-4 w-full md:w-auto">
-          <label className="text-xl text-white">Language:</label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="mt-2 md:mt-0 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            <option value="python">Python</option>
-            <option value="node">Node.js</option>
-            <option value="c">C</option>
-            <option value="cpp">C++</option>
-            <option value="java">Java</option>
-          </select>
-        </div>
-
-        <button
-          onClick={runCode}
-          className={`w-full md:w-auto py-3 px-2 mt-4 md:mt-0 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none transition-all duration-300 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
-          disabled={isLoading}>
-          {isLoading ? '⏳ Running...' : '▶ Run Code'}
-        </button>
-      </div>
-
-      <textarea
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="// Write your code here"
-        className="w-full max-w-4xl h-72 p-6 mt-4 bg-gray-900 text-white font-mono rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+const FeaturesSection: React.FC = () => (
+  <section id="features" className="py-20 bg-gray-50">
+    <h2 className="text-4xl font-bold text-center mb-12">Features</h2>
+    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+      <FeatureCard
+        title="Language Support"
+        description="Run code in Python, Node.js, C, C++, and Java."
       />
-
-      <div className="w-full max-w-4xl mt-6 bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h3 className="text-2xl text-white mb-2">Output:</h3>
-        <pre className={`p-4 bg-gray-700 text-white rounded-md ${error ? 'text-red-400' : ''} whitespace-pre-wrap`}>
-          {error ? error : output || '⚡ Output will appear here...'}
-        </pre>
-      </div>
+      <FeatureCard
+        title="Secure Execution"
+        description="Every run is isolated using Docker containers."
+      />
+      <FeatureCard
+        title="Simple Interface"
+        description="Minimal UI designed to let you focus on the code."
+      />
     </div>
-  );
-};
+  </section>
+);
 
-export default Home;
+const AboutSection: React.FC = () => (
+  <section className="py-20 bg-white">
+    <div className="max-w-4xl mx-auto px-4 text-center">
+      <h2 className="text-4xl font-bold mb-6">About CodeOrb</h2>
+      <p className="text-gray-700 text-lg leading-relaxed">
+        CodeOrb is an in-browser code runner powered by Docker and a Flask backend. 
+        It supports multiple languages and is designed for quick testing, learning, and experimentation.
+      </p>
+    </div>
+  </section>
+);
+
+export default function LandingPage() {
+  return (
+    <>
+      <HeroSection />
+      <FeaturesSection />
+      <AboutSection />
+    </>
+  );
+}
