@@ -66,7 +66,7 @@ Go to [http://localhost:3000](http://localhost:3000) to use CodeOrb.
 
 ## Notes
 
-- Docker must be installed and running for code execution to work properly.
+- Docker must be installed and running for code execution to work properly
 - Each code submission is isolated via Docker for safety.
 
 ## License

@@ -43,6 +43,7 @@ export default function CodeEditor() {
       }
     } catch (err) {
       setError("Failed to run code");
+      console.log(err);
       setOutput(null);
     } finally {
       setIsRunning(false);

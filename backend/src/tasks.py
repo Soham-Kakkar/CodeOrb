@@ -15,12 +15,12 @@ LANGUAGE_CONFIGS = {
         "command": lambda filename: ["python3", filename],
     },
     "c": {
-        "image": "gcc:latest-alpine",
+        "image": "stagex/gcc",
         "file_ext": ".c",
         "command": lambda filename: ["sh", "-c", f"gcc {filename} -o out && ./out"],
     },
     "cpp": {
-        "image": "gcc:latest-alpine",
+        "image": "stagex/gcc",
         "file_ext": ".cpp",
         "command": lambda filename: ["sh", "-c", f"g++ {filename} -o out && ./out"],
     },
@@ -35,6 +35,24 @@ LANGUAGE_CONFIGS = {
         "command": lambda filename: ["sh", "-c", f"javac {filename} && java -cp . Main"],
     },
 }
+
+def pull_required_images():
+    client = docker.from_env()
+
+    required_images = [config["image"] for config in LANGUAGE_CONFIGS.values()]
+
+    for image in required_images:
+        try:
+            if image not in [img.tags[0] for img in client.images.list()]:
+                os.system(f"echo 'Pulling Docker image: {image}'")
+                client.images.pull(image)
+            else:
+                os.system(f"echo 'Image {image} already exists.'")
+        except docker.errors.DockerException as e:
+            os.system(f"echo 'Error pulling image {image}: {str(e)}'")
+
+# Pull the required Docker images when the server starts
+pull_required_images()
 
 @celery.task(bind=True, name="src.tasks.run_code")
 def run_code(self, code, language):
