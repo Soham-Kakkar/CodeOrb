@@ -8,51 +8,31 @@ import shutil
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+# Configure language-specific information
 LANGUAGE_CONFIGS = {
     "python": {
-        "image": "python:3.13-alpine",
         "file_ext": ".py",
         "command": lambda filename: ["python3", filename],
     },
     "c": {
-        "image": "stagex/gcc",
         "file_ext": ".c",
         "command": lambda filename: ["sh", "-c", f"gcc {filename} -o out && ./out"],
     },
     "cpp": {
-        "image": "stagex/gcc",
         "file_ext": ".cpp",
         "command": lambda filename: ["sh", "-c", f"g++ {filename} -o out && ./out"],
     },
     "node": {
-        "image": "node:20-alpine",
         "file_ext": ".js",
         "command": lambda filename: ["node", filename],
     },
     "java": {
-        "image": "eclipse-temurin:21-jdk-alpine",
         "file_ext": ".java",
         "command": lambda filename: ["sh", "-c", f"javac {filename} && java -cp . Main"],
     },
 }
 
-def pull_required_images():
-    client = docker.from_env()
-
-    required_images = [config["image"] for config in LANGUAGE_CONFIGS.values()]
-
-    for image in required_images:
-        try:
-            if image not in [img.tags[0] for img in client.images.list()]:
-                os.system(f"echo 'Pulling Docker image: {image}'")
-                client.images.pull(image)
-            else:
-                os.system(f"echo 'Image {image} already exists.'")
-        except docker.errors.DockerException as e:
-            os.system(f"echo 'Error pulling image {image}: {str(e)}'")
-
-# Pull the required Docker images when the server starts
-pull_required_images()
+DOCKER_IMAGE = "multi-lang-env:latest"
 
 @celery.task(bind=True, name="src.tasks.run_code")
 def run_code(self, code, language):
@@ -72,8 +52,10 @@ def run_code(self, code, language):
 
         # STEP 2: Run inside Docker container
         client = docker.from_env()
+        
+        # Run the container with the pre-built image that already has dependencies installed
         result = client.containers.run(
-            image=config["image"],
+            image=DOCKER_IMAGE,
             command=config["command"](filename),
             volumes={temp_dir: {"bind": "/code", "mode": "rw"}},
             working_dir="/code",
