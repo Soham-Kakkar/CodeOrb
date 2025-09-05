@@ -70,4 +70,4 @@ Go to [http://localhost:3000](http://localhost:3000) to use CodeOrb.
 - Each code submission is isolated via Docker for safety.
 
 ## License
-The project is licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> <img src="https://mirrors.creativecommons.org/presskit/icons/cc.svg" alt="" style="width: 1em;height:1em;margin-left: .2em;"><img src="https://mirrors.creativecommons.org/presskit/icons/by.svg" alt="" style="width: 1em;height:1en;margin-left: .2em;">
+The project is licensed under the MIT license.
