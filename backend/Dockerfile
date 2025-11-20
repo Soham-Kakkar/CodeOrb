@@ -1,6 +1,5 @@
 FROM alpine:3.22
 
-# Install Bash, GCC, G++, Node.js, OpenJDK JRE
 RUN apk update && apk add --no-cache \
     bash \
     gcc \
@@ -8,19 +7,12 @@ RUN apk update && apk add --no-cache \
     musl-dev \
     python3 \
     nodejs \
-    openjdk11 \
-    && rm -rf /var/cache/apk/*  # Clean up APK cache to reduce image size
+    openjdk17 \
+    && rm -rf /var/cache/apk/* /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale /var/log/* /var/tmp/* /tmp/* \
+    && rm -rf /usr/lib/python*/ensurepip /usr/lib/python*/site-packages/*-info /usr/share/python*/man /usr/share/python*/doc \
+    && rm -rf /usr/lib/node_modules /root/.npm /usr/share/man/*node* \
+    && rm -rf /usr/share/gcc /usr/share/man/*gcc* /usr/include/*/gnu \
+    && rm -rf /usr/lib/jvm/*/src.zip /usr/lib/jvm/*/lib/man
 
-# Remove unnecessary stuff to reduce image size
-RUN rm -rf /usr/share/man \
-    /usr/share/doc \
-    /usr/share/info \
-    /usr/share/locale/* \
-    /usr/share/man/* \
-    /tmp/*
-
-# Set working directory (you can modify this as needed)
 WORKDIR /app
-
-# Default command (could be overwritten by the user)
 CMD ["bash"]
