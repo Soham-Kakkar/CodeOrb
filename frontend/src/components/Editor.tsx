@@ -19,7 +19,7 @@ export default function CodeEditor() {
 
   const filenames: Record<string, string> = {
     "python": "code.py",
-    "node": "code.js",
+    "javascript": "code.js",
     "c": "code.c",
     "cpp": "code.cpp",
     "java": "Main.java",
@@ -59,7 +59,7 @@ export default function CodeEditor() {
 
   useEffect(() => {
     setFilename(filenames[language]);
-  }, [language]);
+  }, [language, filenames]);
 
   return (
     <div className="border border-gray-300 mt-4 md:w-[50%] w-full md:h-[calc(100vh-6rem)] h-[calc(50vh-3rem)] flex flex-col">

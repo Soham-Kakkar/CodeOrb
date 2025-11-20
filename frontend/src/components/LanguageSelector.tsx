@@ -16,7 +16,7 @@ export default function LanguageSelector() {
       onChange={handleLanguageChange}
     >
       <option value="python">Python</option>
-      <option value="node">Node.js</option>
+      <option value="javascript">Node.js</option>
       <option value="java">Java</option>
       <option value="c">C</option>
       <option value="cpp">C++</option>
