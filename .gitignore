@@ -1,3 +1,4 @@
 __pycache__/
 dump.rdb
-pnpm-lock.yaml
+*-lock.*
+codeorb_results.json

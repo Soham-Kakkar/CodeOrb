@@ -22,7 +22,7 @@ LANGUAGE_CONFIGS = {
         "file_ext": ".cpp",
         "command": lambda filename: ["sh", "-c", f"g++ {filename} -o out && ./out"],
     },
-    "node": {
+    "javascript": {
         "file_ext": ".js",
         "command": lambda filename: ["node", filename],
     },
@@ -73,6 +73,7 @@ def run_code(self, code, language):
                     "max-file": "3",    # Keep only 3 log files
                 }
             ),
+            security_opt=["no-new-privileges"],
         )
 
         return {"output": result.decode("utf-8"), "error": None}
