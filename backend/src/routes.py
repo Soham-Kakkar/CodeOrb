@@ -1,29 +1,26 @@
-import os
-from flask import request, jsonify, send_from_directory
-from src import app, celery
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from src.tasks import run_code
 
-@app.route('/')
+router = APIRouter()
+
+class RunRequest(BaseModel):
+    code: str
+    language: str
+
+@router.get("/")
 def home():
-    return 'CodeOrb API is live!'
+    return {"message": "CodeOrb API is live!"}
 
-@app.route('/docs')
-def docs():
-    return send_from_directory("./docs", "index.html")
+@router.post("/run")
+def run(request: RunRequest):
+    if not request.code or not request.language:
+        raise HTTPException(status_code=400, detail="Missing code or language")
 
-@app.route("/run", methods=["POST"])
-def run():
-    data = request.get_json()
-    code = data.get("code")
-    language = data.get("language")
-
-    if not code or not language:
-        return jsonify({"error": "Missing code or language"}), 400
-
-    task = run_code.apply_async(args=[code, language])
+    task = run_code.apply_async(args=[request.code, request.language])
 
     try:
-        result = task.get(timeout=10)  # seconds
-        return jsonify({"output": result.get("output"), "error": result.get("error")})
+        result = task.get(timeout=10)
+        return {"output": result.get("output"), "error": result.get("error")}
     except Exception as e:
-        return jsonify({"error": f"Execution failed or timed out: {str(e)}"}), 500
+        raise HTTPException(status_code=500, detail=f"Execution failed or timed out: {str(e)}")

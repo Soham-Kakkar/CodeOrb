@@ -1,5 +1,4 @@
-from src import app
-import src.routes  # noqa: F401
+import uvicorn
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    uvicorn.run("src:app", host="0.0.0.0", port=5000, reload=True)

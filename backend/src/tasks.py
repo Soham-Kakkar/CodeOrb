@@ -1,4 +1,4 @@
-from src import celery
+from src.celery import celery
 import logging
 import docker
 import tempfile
@@ -51,8 +51,7 @@ def run_code(self, code, language):
             f.write(code)
 
         # STEP 2: Run inside Docker container
-        client = docker.from_env()
-        
+        client = docker.from_env()        
         # Run the container with the pre-built image that already has dependencies installed
         result = client.containers.run(
             image=DOCKER_IMAGE,
