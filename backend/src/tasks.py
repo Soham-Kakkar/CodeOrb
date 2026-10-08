@@ -5,6 +5,7 @@ import tempfile
 import os
 import traceback
 import shutil
+import time
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -51,7 +52,9 @@ def run_code(self, code, language):
             f.write(code)
 
         # STEP 2: Run inside Docker container
-        client = docker.from_env()        
+        client = docker.from_env()
+        # Measure the time taken to run the container   
+        container_start = time.perf_counter()     
         # Run the container with the pre-built image that already has dependencies installed
         result = client.containers.run(
             image=DOCKER_IMAGE,
@@ -75,7 +78,9 @@ def run_code(self, code, language):
             security_opt=["no-new-privileges"],
         )
 
-        return {"output": result.decode("utf-8"), "error": None}
+        container_time = time.perf_counter() - container_start
+        logging.info(f"Container time: {container_time:.2f} seconds")
+        return {"output": result.decode("utf-8"), "error": None, "container_time": container_time}
 
     except docker.errors.ContainerError as e:
         return {

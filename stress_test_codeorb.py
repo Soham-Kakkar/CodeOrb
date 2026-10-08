@@ -5,9 +5,10 @@ import json
 import statistics
 
 BASE_URL = "http://localhost:5000/run"
-CONCURRENCY = 50                            # Number of simultaneous workers
-TOTAL_REQUESTS = 3000                       # Total number of requests
-TIMEOUT = 15                                # Per request timeout (s)
+TOTAL_REQUESTS = 3000                     # Total number of requests per test
+RATES = [10, 20, 30, 40, 50, 60]          # Offered request rates
+TIMEOUT = 15                              # HTTP request timeout (s)
+POLL_INTERVAL = 0.1                       # Polling interval (s)
 LANGUAGES = ["python", "javascript", "c", "cpp", "java"]
 
 SAMPLES = {
@@ -18,91 +19,144 @@ SAMPLES = {
     "java": 'class Main { public static void main(String[] a){ System.out.println(2+2); } }'
 }
 
-results = []
+def percentile(values, p):
+    if not values:
+        return None
+    values = sorted(values)
+    # Nearest-rank percentile
+    index = max(0, min(len(values)-1, int((p / 100) * len(values))))
+    return values[index]
 
-async def worker(idx, session, queue):
-    while True:
-        try:
-            req_id = queue.get_nowait()
-        except asyncio.QueueEmpty:
-            return
-        lang = LANGUAGES[req_id % len(LANGUAGES)]
-        payload = {"language": lang, "code": SAMPLES[lang]}
-        start = time.perf_counter()
-        try:
-            async with session.post(BASE_URL, json=payload, timeout=TIMEOUT) as resp:
-                elapsed = time.perf_counter() - start
-                ok = resp.status == 200
-                data = await resp.text()
-                results.append({
-                    "id": req_id,
-                    "lang": lang,
-                    "status": resp.status,
-                    "ok": ok,
-                    "elapsed": elapsed,
-                    "output_snippet": data[:150]
-                })
-        except Exception as e:
-            elapsed = time.perf_counter() - start
-            results.append({
-                "id": req_id,
-                "lang": lang,
-                "status": None,
-                "ok": False,
-                "elapsed": elapsed,
-                "error": str(e)
-            })
-        finally:
-            queue.task_done()
+async def run_request(req_id, session):
+    lang = LANGUAGES[req_id % len(LANGUAGES)]
+    payload = {"language": lang, "code": SAMPLES[lang]}
+    start = time.perf_counter()
+    try:
+        # Submit execution
+        async with session.post(BASE_URL, json=payload, timeout=TIMEOUT) as resp:
+            data = await resp.json()
+        if resp.status != 202 or "task_id" not in data:
+            raise RuntimeError(f"Submission failed: {resp.status} {data}")
+        task_id = data["task_id"]
+        # Poll until execution finishes
+        while True:
+            async with session.get(f"{BASE_URL}/{task_id}", timeout=TIMEOUT) as status_resp:
+                status_data = await status_resp.json()
+            task_status = status_data.get("status")
+            if task_status == "SUCCESS":
+                break
+            if task_status == "FAILURE":
+                raise RuntimeError("Execution failed")
+            await asyncio.sleep(POLL_INTERVAL)
+        elapsed = time.perf_counter() - start
+        container_time = status_data.get("container_time")
+        overhead = (elapsed - container_time if container_time is not None else None)
+        return {
+            "id": req_id,
+            "lang": lang,
+            "status": status_resp.status,
+            "ok": True,
+            "elapsed": elapsed,
+            "container_time": container_time,
+            "overhead": overhead,
+            "output_snippet": str(status_data)[:150]
+        }
 
-async def main():
-    queue = asyncio.Queue()
-    for i in range(TOTAL_REQUESTS):
-        queue.put_nowait(i)
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        return {
+            "id": req_id,
+            "lang": lang,
+            "status": None,
+            "ok": False,
+            "elapsed": elapsed,
+            "container_time": None,
+            "overhead": None,
+            "error": str(e)
+        }
 
-    timeout = aiohttp.ClientTimeout(total=None)
-    connector = aiohttp.TCPConnector(limit=0)
-    async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-        tasks = [asyncio.create_task(worker(i, session, queue)) for i in range(CONCURRENCY)]
-        start = time.perf_counter()
-        await queue.join()
-        total_time = time.perf_counter() - start
-        for t in tasks:
-            t.cancel()
+async def submit_requests(session, offered_rate):
+    tasks = []
+    interval = 1 / offered_rate
+    start = time.perf_counter()
+    for req_id in range(TOTAL_REQUESTS):
+        tasks.append(asyncio.create_task(run_request(req_id, session)))
+        next_submit = start + (req_id + 1) * interval
+        delay = next_submit - time.perf_counter()
+        if delay > 0:
+            await asyncio.sleep(delay)
+    return tasks, start
+
+async def run_test(session, offered_rate):
+    tasks, start_time = await submit_requests(session, offered_rate)
+    results = await asyncio.gather(*tasks)
+    total_time = time.perf_counter() - start_time
 
     # ---- Summary ----
-    latencies = [r["elapsed"] for r in results if r.get("elapsed")]
     success = [r for r in results if r.get("ok")]
     errors = [r for r in results if not r.get("ok")]
-    total = len(results)
-    throughput = total / total_time if total_time else 0
 
-    def pct(p):
-        if not latencies:
-            return 0
-        lat_sorted = sorted(latencies)
-        idx = int(len(lat_sorted) * (p / 100))
-        return lat_sorted[min(idx, len(lat_sorted) - 1)]
+    latencies = [r["elapsed"] for r in success]
+    container_times = [r["container_time"] for r in success if r.get("container_time") is not None]
+    overheads = [r["overhead"] for r in success if r.get("overhead") is not None]
+
+    total = len(results)
+
+    completed_throughput = (
+        len(success) / total_time
+        if total_time
+        else 0
+    )
 
     summary = {
         "total_requests": total,
         "success": len(success),
         "errors": len(errors),
         "error_rate_%": round(len(errors) / total * 100, 2) if total else 0,
+        "offered_rate_rps": offered_rate,
+        "completed_throughput_rps": round(completed_throughput, 2),
         "total_time_s": round(total_time, 2),
-        "throughput_rps": round(throughput, 2),
+
+        # End-to-end completion latency
         "latency_mean_s": round(statistics.mean(latencies), 3) if latencies else None,
-        "latency_p50_s": round(pct(50), 3),
-        "latency_p90_s": round(pct(90), 3),
-        "latency_p99_s": round(pct(99), 3)
+        "latency_p50_s": round(percentile(latencies, 50), 3) if latencies else None,
+        "latency_p90_s": round(percentile(latencies, 90), 3) if latencies else None,
+        "latency_p99_s": round(percentile(latencies, 99), 3) if latencies else None,
+
+        # Docker execution-stage time
+        "container_time_p50_s": round(percentile(container_times, 50), 3) if container_times else None,
+
+        # Service overhead = end-to-end latency - container stage
+        "service_overhead_mean_s": round(statistics.mean(overheads), 3) if overheads else None,
+        "service_overhead_p50_s": round(percentile(overheads, 50), 3) if overheads else None,
+        "service_overhead_p90_s": round(percentile(overheads, 90), 3) if overheads else None,
+        "service_overhead_p99_s": round(percentile(overheads, 99), 3) if overheads else None,
     }
 
-    print("\n=== CodeOrb Stress Test Summary ===")
-    for k, v in summary.items():
-        print(f"{k:20}: {v}")
+    return summary, results
+
+async def main():
+    all_results = {}
+
+    timeout = aiohttp.ClientTimeout(total=None)
+    connector = aiohttp.TCPConnector(limit=0)
+
+    async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+        for rate in RATES:
+            print(f"\n=== Testing {rate} requests/sec ===")
+            summary, results = await run_test(session, rate)
+            all_results[rate] = {
+                "summary": summary,
+                "results": results
+            }
+
+            for k, v in summary.items():
+                print(f"{k:30}: {v}")
+
     with open("codeorb_results.json", "w") as f:
-        json.dump({"summary": summary, "results": results}, f, indent=2)
-    print("Saved detailed results to codeorb_results.json")
+        json.dump(all_results, f, indent=2)
+
+    print("\nSaved detailed results to codeorb_results.json")
 
 if __name__ == "__main__":
     asyncio.run(main())
