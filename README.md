@@ -2,7 +2,7 @@
 
 CodeOrb is a full-stack web application that allows users to run code securely in multiple programming languages directly from the browser. It uses Docker for isolated execution, Redis and Celery for background job handling, and FastAPI for the backend API.
 
-Note: True asynchronous execution is not yet implemented, although Celery is set up. See TODOs below.
+Code execution is fully asynchronous: the API queues a Celery job and immediately returns a task ID. The frontend polls the task status endpoint while the worker runs the code in Docker.
 
 ## Technologies Used
 
@@ -20,10 +20,6 @@ Note: True asynchronous execution is not yet implemented, although Celery is set
 - Java
 - Node.js
 - Python 3
-
-## TODOs
-
-- Implement fully asynchronous execution (currently synchronous with Celery setup)
 
 ## Installation and Usage
 

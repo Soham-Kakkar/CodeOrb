@@ -3,6 +3,10 @@ import "./globals.css";
 import { AppProvider } from "./AppProvider";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "CodeOrb - Open Source Code Execution Engine",
@@ -13,7 +17,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="flex flex-col min-h-screen">
         <AppProvider>
           <Navbar />

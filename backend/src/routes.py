@@ -1,26 +1,31 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, status
+from pydantic import BaseModel, Field
 from src.tasks import run_code
 
 router = APIRouter()
 
 class RunRequest(BaseModel):
-    code: str
-    language: str
+    code: str = Field(min_length=1)
+    language: str = Field(min_length=1)
 
 @router.get("/")
 def home():
     return {"message": "CodeOrb API is live!"}
 
-@router.post("/run")
+@router.post("/run", status_code=status.HTTP_202_ACCEPTED)
 def run(request: RunRequest):
-    if not request.code or not request.language:
-        raise HTTPException(status_code=400, detail="Missing code or language")
-
     task = run_code.apply_async(args=[request.code, request.language])
+    return {"task_id": task.id, "status": "PENDING"}
 
-    try:
-        result = task.get(timeout=10)
-        return {"output": result.get("output"), "error": result.get("error")}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Execution failed or timed out: {str(e)}")
+
+@router.get("/run/{task_id}")
+def run_status(task_id: str):
+    result = run_code.AsyncResult(task_id)
+    response = {"task_id": task_id, "status": result.state}
+
+    if result.successful() and isinstance(result.result, dict):
+        response.update(result.result)
+    elif result.failed():
+        response["error"] = "Execution failed"
+
+    return response
